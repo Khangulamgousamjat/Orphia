@@ -95,7 +95,10 @@ export default function ModelPage() {
               <h2 className="text-2xl font-bold gradient-text">
                 RNN-LSTM-Based Architecture
               </h2>
-              <p className="text-muted-foreground">
+              <p
+                className="text-muted-foreground text-justify"
+                style={{ textAlign: "justify" }}
+              >
                 Orphia leverages a custom RNN-LSTM neural network built with
                 TensorFlow/Keras and trained on a curated European folk song
                 dataset. The model processes both text prompts and audio inputs,
@@ -103,7 +106,10 @@ export default function ModelPage() {
                 underlying musical patterns, including rhythm, melody, and
                 harmony.
               </p>
-              <p className="text-muted-foreground">
+              <p
+                className="text-muted-foreground text-justify"
+                style={{ textAlign: "justify" }}
+              >
                 This powerful representation enables the generation of extended
                 musical sequences that remain faithful to the original style
                 while introducing creative variations.
@@ -149,7 +155,12 @@ export default function ModelPage() {
                     <CardTitle>{item.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    <p className="text-muted-foreground">{item.description}</p>
+                    <p
+                      className="text-muted-foreground text-justify"
+                      style={{ textAlign: "justify" }}
+                    >
+                      {item.description}
+                    </p>
                   </CardContent>
                 </Card>
               </motion.div>

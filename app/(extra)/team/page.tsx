@@ -215,7 +215,10 @@ export default function TeamPage() {
             <h3 className="font-semibold text-base mb-2">
               Full-Stack Architecture
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p
+              className="text-sm text-muted-foreground leading-relaxed text-justify"
+              style={{ textAlign: "justify" }}
+            >
               Engineered with Next.js 15, React 19, TypeScript, and Convex for
               real-time reactive state management and responsive styling.
             </p>
@@ -226,7 +229,10 @@ export default function TeamPage() {
               <Cpu className="h-5 w-5" />
             </div>
             <h3 className="font-semibold text-base mb-2">Neural Music AI</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p
+              className="text-sm text-muted-foreground leading-relaxed text-justify"
+              style={{ textAlign: "justify" }}
+            >
               Integrated with deep learning music generation models, enabling
               text-to-audio conditioning, sample extensions, and melodic
               transformations.
@@ -240,7 +246,10 @@ export default function TeamPage() {
             <h3 className="font-semibold text-base mb-2">
               Engineering Vision
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p
+              className="text-sm text-muted-foreground leading-relaxed text-justify"
+              style={{ textAlign: "justify" }}
+            >
               Designed and deployed by Gulamgous Khan at MPGI SOE Nanded to democratize
               music composition for creators, developers, and media producers.
             </p>
