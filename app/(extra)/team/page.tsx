@@ -3,19 +3,29 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Github, Linkedin, Mail, MailIcon } from "lucide-react";
+import {
+  Github,
+  Linkedin,
+  Mail,
+  GraduationCap,
+  Code2,
+  Cpu,
+  Layers,
+  Sparkles,
+  Award,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { teacherMentor, teamMembers } from "@/constants/team-members";
+import { teamMembers } from "@/constants/team-members";
 import { useConvexAuth } from "convex/react";
 import { Spinner } from "@/components/spinner";
 import { redirect } from "next/navigation";
 
 export default function TeamPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
-  const [hoveredMember, setHoveredMember] = useState<number | null>(null);
+  const [hovered, setHovered] = useState(false);
 
   if (isLoading) {
     return (
@@ -29,100 +39,162 @@ export default function TeamPage() {
     return redirect("/");
   }
 
+  const member = teamMembers[0];
+
   return (
-    <div className="container py-8">
-      <div className="space-y-12">
+    <div className="container py-10 max-w-5xl">
+      <div className="space-y-10">
         <div className="space-y-4 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+            <Sparkles className="h-4 w-4" />
+            <span>The Mind Behind Orphia</span>
+          </div>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl gradient-text">
             Meet Our Team
           </h1>
-          <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-            The brilliant minds behind Orphia working to transform how music is
-            created with AI.
+          <p className="mx-auto max-w-[700px] text-muted-foreground md:text-lg">
+            Dedicated to transforming how music is created through artificial
+            intelligence and modern web architecture.
           </p>
         </div>
 
-        {/* Teacher/Mentor Card - Full Width */}
+        {/* Hero Creator Card */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          whileHover={{ y: -5 }}
-          onHoverStart={() => setHoveredMember(-1)}
-          onHoverEnd={() => setHoveredMember(null)}
+          whileHover={{ y: -4 }}
+          onHoverStart={() => setHovered(true)}
+          onHoverEnd={() => setHovered(false)}
         >
-          <Card className="overflow-hidden border-primary/20 h-full">
+          <Card className="overflow-hidden border-primary/20 shadow-xl bg-card/80 backdrop-blur-sm">
             <div className="flex flex-col md:flex-row">
-              <div className="md:w-1/4 relative">
-                <div className="aspect-square relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 z-10"></div>
-                  <Image
-                    src={teacherMentor.image || "/placeholder.svg"}
-                    alt={teacherMentor.name}
-                    fill
-                    className="object-cover transition-transform duration-500"
-                    style={{
-                      transform:
-                        hoveredMember === -1 ? "scale(1.05)" : "scale(1)",
-                    }}
-                  />
-                  <div className="absolute bottom-4 left-4 right-4 z-20 md:hidden">
-                    <h3 className="text-xl font-bold text-white">
-                      {teacherMentor.name}
-                    </h3>
-                    <p className="text-white/80 text-sm">
-                      {teacherMentor.role}
-                    </p>
-                  </div>
+              <div className="md:w-2/5 relative min-h-[380px] md:min-h-[460px] bg-muted overflow-hidden">
+                <Image
+                  src={member.image || "/placeholder.svg"}
+                  alt={member.name}
+                  fill
+                  priority
+                  className="object-cover object-top transition-transform duration-700 ease-out"
+                  style={{
+                    transform: hovered ? "scale(1.04)" : "scale(1)",
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent md:hidden" />
+                <div className="absolute bottom-4 left-4 right-4 z-20 md:hidden text-white">
+                  <h3 className="text-2xl font-bold">{member.name}</h3>
+                  <p className="text-white/80 text-sm font-medium">
+                    {member.role}
+                  </p>
                 </div>
               </div>
-              <CardContent className="space-y-4 pt-6 md:w-3/4 flex flex-col">
-                <div className="hidden md:block">
-                  <h3 className="text-2xl font-bold gradient-text">
-                    {teacherMentor.name}
-                  </h3>
-                  <p className="text-lg text-primary">{teacherMentor.role}</p>
+
+              <CardContent className="space-y-6 p-6 md:p-8 md:w-3/5 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="hidden md:block">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                        {member.title}
+                      </span>
+                    </div>
+                    <h2 className="text-3xl font-extrabold gradient-text tracking-tight">
+                      {member.name}
+                    </h2>
+                    <p className="text-base font-semibold text-primary/90 mt-1">
+                      {member.role}
+                    </p>
+                  </div>
+
+                  {/* Education Badge */}
+                  <div className="flex items-start gap-3 p-3.5 rounded-xl bg-secondary/10 border border-secondary/20">
+                    <GraduationCap className="h-5 w-5 text-secondary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {member.education}
+                      </p>
+                      <p className="text-xs text-muted-foreground font-medium">
+                        {member.college}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
+                    {member.description}
+                  </p>
+
+                  {/* Skills Section */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Code2 className="h-3.5 w-3.5 text-primary" />
+                      <span>Technical Competencies</span>
+                    </div>
+                    <div className="space-y-2">
+                      {member.skills.map((skillGroup, idx) => (
+                        <div key={idx} className="flex flex-col gap-1.5">
+                          <span className="text-xs font-medium text-foreground/80">
+                            {skillGroup.category}:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {skillGroup.items.map((skill, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className="px-2.5 py-1 rounded-md text-xs font-medium bg-muted text-foreground/90 border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                              >
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-muted-foreground flex-grow">
-                  {teacherMentor.description}
-                </p>
-                <div className="flex space-x-2">
+
+                {/* Social Actions */}
+                <div className="flex items-center gap-3 pt-4 border-t border-border/60">
                   <Link
-                    href={teacherMentor.github}
+                    href={member.github}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                      size="sm"
+                      variant="outline"
+                      className="gap-2 rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary"
                     >
                       <Github className="h-4 w-4" />
-                      <span className="sr-only">GitHub</span>
+                      <span>GitHub</span>
                     </Button>
                   </Link>
+
                   <Link
-                    href={teacherMentor.linkedin}
+                    href={member.linkedin}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary"
+                      size="sm"
+                      variant="outline"
+                      className="gap-2 rounded-full border-secondary/20 hover:bg-secondary/10 hover:text-secondary"
                     >
                       <Linkedin className="h-4 w-4" />
-                      <span className="sr-only">LinkedIn</span>
+                      <span>LinkedIn</span>
                     </Button>
                   </Link>
-                  <Link href={`mailto:${teacherMentor.mail}`}>
+
+                  <Link
+                    href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(member.mail.toLowerCase())}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                      size="sm"
+                      variant="outline"
+                      className="gap-2 rounded-full border-primary/20 hover:bg-primary/10 hover:text-primary"
                     >
                       <Mail className="h-4 w-4" />
-                      <span className="sr-only">Email</span>
+                      <span>Email</span>
                     </Button>
                   </Link>
                 </div>
@@ -131,99 +203,45 @@ export default function TeamPage() {
           </Card>
         </motion.div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {teamMembers.map((member, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1, duration: 0.5 }}
-              whileHover={{ y: -5 }}
-              onHoverStart={() => setHoveredMember(index)}
-              onHoverEnd={() => setHoveredMember(null)}
-            >
-              <Card className="overflow-hidden border-primary/20 h-full">
-                <div className="flex flex-col md:flex-row">
-                  <div className="md:w-1/3 relative">
-                    <div className="aspect-square relative overflow-hidden">
-                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 z-10"></div>
-                      <Image
-                        src={member.image || "/placeholder.svg"}
-                        alt={member.name}
-                        fill
-                        className="object-cover transition-transform duration-500"
-                        style={{
-                          transform:
-                            hoveredMember === index
-                              ? "scale(1.05)"
-                              : "scale(1)",
-                        }}
-                      />
-                      <div className="absolute bottom-4 left-4 right-4 z-20 md:hidden">
-                        <h3 className="text-xl font-bold text-white">
-                          {member.name}
-                        </h3>
-                        <p className="text-white/80 text-sm">{member.role}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <CardContent className="space-y-4 pt-6 md:w-2/3 flex flex-col">
-                    <div className="hidden md:block">
-                      <h3 className="text-xl font-bold">{member.name}</h3>
-                      <p className="text-sm text-primary">{member.role}</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground flex-grow">
-                      {member.description}
-                    </p>
-                    <div className="flex space-x-2">
-                      <Link
-                        href={member.github}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
-                        >
-                          <Github className="h-4 w-4" />
-                          <span className="sr-only">GitHub</span>
-                        </Button>
-                      </Link>
-                      <Link
-                        href={member.linkedin}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary"
-                        >
-                          <Linkedin className="h-4 w-4" />
-                          <span className="sr-only">LinkedIn</span>
-                        </Button>
-                      </Link>
-                      <Link
-                        href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(member.mail.toLowerCase())}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
-                        >
-                          <Mail className="h-4 w-4" />
-                          <span className="sr-only">Email</span>
-                        </Button>
-                      </Link>
-                    </div>
-                  </CardContent>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
+        {/* Architecture & Engineering Highlights */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+          <Card className="border-primary/20 bg-card/50 p-6 rounded-2xl hover:border-primary/40 transition-all">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+              <Code2 className="h-5 w-5" />
+            </div>
+            <h3 className="font-semibold text-base mb-2">
+              Full-Stack Architecture
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Engineered with Next.js 15, React 19, TypeScript, and Convex for
+              real-time reactive state management and responsive styling.
+            </p>
+          </Card>
+
+          <Card className="border-secondary/20 bg-card/50 p-6 rounded-2xl hover:border-secondary/40 transition-all">
+            <div className="h-10 w-10 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary mb-4">
+              <Cpu className="h-5 w-5" />
+            </div>
+            <h3 className="font-semibold text-base mb-2">Neural Music AI</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Integrated with deep learning music generation models, enabling
+              text-to-audio conditioning, sample extensions, and melodic
+              transformations.
+            </p>
+          </Card>
+
+          <Card className="border-primary/20 bg-card/50 p-6 rounded-2xl hover:border-primary/40 transition-all">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
+              <Award className="h-5 w-5" />
+            </div>
+            <h3 className="font-semibold text-base mb-2">
+              Engineering Vision
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Designed and deployed by Gous Khan at MPGI SOE Nanded to democratize
+              music composition for creators, developers, and media producers.
+            </p>
+          </Card>
         </div>
       </div>
     </div>
