@@ -21,7 +21,7 @@ export interface TeamMember {
 
 export const teamMembers: TeamMember[] = [
   {
-    name: "Gous Khan",
+    name: "Gulamgous Khan",
     role: "Full Stack / AI/ML Engineer",
     title: "Lead Engineer & Creator",
     education: "B.Tech in Computer Science & Engineering",

@@ -119,7 +119,10 @@ export default function TeamPage() {
                   </div>
 
                   {/* Description */}
-                  <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">
+                  <p
+                    className="text-muted-foreground leading-relaxed text-sm sm:text-base text-justify"
+                    style={{ textAlign: "justify" }}
+                  >
                     {member.description}
                   </p>
 
@@ -238,7 +241,7 @@ export default function TeamPage() {
               Engineering Vision
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Designed and deployed by Gous Khan at MPGI SOE Nanded to democratize
+              Designed and deployed by Gulamgous Khan at MPGI SOE Nanded to democratize
               music composition for creators, developers, and media producers.
             </p>
           </Card>
