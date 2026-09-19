@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { HelpCircle } from "lucide-react";
+import Link from "next/link";
+import { HelpCircle, Send, Mail, MessageSquare } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -54,17 +55,34 @@ export default function FAQPage() {
 
         <div className="mt-12 text-center">
           <h2 className="text-xl font-bold mb-4">Still have questions?</h2>
-          <p className="text-muted-foreground mb-6">
-            If you couldn't find the answer to your question, feel free to reach
-            out to our support team.
+          <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
+            If you couldn&apos;t find the answer to your question, chat with our
+            Telegram Bot or reach out to us directly.
           </p>
-          <div className="flex justify-center gap-4">
+          <div className="flex flex-wrap justify-center items-center gap-4">
+            <a
+              href="https://t.me/portfolio_gous_bot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-5 shadow-sm"
+            >
+              <Send className="h-4 w-4" />
+              <span>Telegram Bot</span>
+            </a>
             <a
               href="mailto:gousk2004@gmail.com"
-              className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background bg-primary text-primary-foreground hover:bg-primary/90 h-10 py-2 px-4"
+              className="inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background bg-secondary/10 text-secondary hover:bg-secondary/20 border border-secondary/20 h-10 py-2 px-5"
             >
-              Contact Support
+              <Mail className="h-4 w-4" />
+              <span>Contact Support</span>
             </a>
+            <Link
+              href="/contribute"
+              className="inline-flex items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background bg-muted text-foreground hover:bg-muted/80 border border-border/50 h-10 py-2 px-5"
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>Report an Issue</span>
+            </Link>
           </div>
         </div>
       </motion.div>

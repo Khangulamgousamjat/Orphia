@@ -65,3 +65,5 @@ export const teamMembers: TeamMember[] = [
 ];
 
 export const teacherMentor = null;
+export const creatorProfile = teamMembers[0];
+export type CreatorProfile = TeamMember;

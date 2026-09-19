@@ -1,7 +1,7 @@
 import {
   Home,
   Upload,
-  Users,
+  User,
   BrainCircuit,
   HeartHandshake,
   Sparkles,
@@ -27,9 +27,9 @@ export const navItems = [
     icon: <Upload className="h-5 w-5" />,
   },
   {
-    title: "Our Team",
-    href: "/team",
-    icon: <Users className="h-5 w-5" />,
+    title: "About Me",
+    href: "/about",
+    icon: <User className="h-5 w-5" />,
   },
   {
     title: "Our Model",

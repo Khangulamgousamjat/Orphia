@@ -3,7 +3,7 @@ import {
   Home,
   Sparkles,
   Upload,
-  Users,
+  User,
   BrainCircuit,
   HeartHandshake,
   HelpCircle,
@@ -23,7 +23,7 @@ export const navItems = [
     label: "Upload Sample",
     icon: <Upload className="h-5 w-5" />,
   },
-  { href: "/team", label: "Our Team", icon: <Users className="h-5 w-5" /> },
+  { href: "/about", label: "About Me", icon: <User className="h-5 w-5" /> },
   {
     href: "/model",
     label: "Our Model",
@@ -54,7 +54,7 @@ export const defaultNavItems = [
   { href: "/", label: "Home" },
   { href: "/create/prompt", label: "Create with Prompt" },
   { href: "/create/sample", label: "Upload Sample" },
-  { href: "/team", label: "Our Team" },
+  { href: "/about", label: "About Me" },
   { href: "/model", label: "Our Model" },
   { href: "/contribute", label: "Contribute" },
 ];

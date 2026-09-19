@@ -27,7 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
-      url: "https://orphia.vercel.app/team/",
+      url: "https://orphia.vercel.app/about/",
       lastModified: new Date(),
       changeFrequency: "yearly",
       priority: 0.5,
