@@ -1,7 +1,7 @@
 /**
  * Advanced Procedural Audio & Music Synthesis Engine for Orphia
- * Generates rich, diverse, polyphonic musical WAV audio matching prompt, genre, mood, tempo, and chords.
- * Also provides high-performance audio sample transformation & accompaniment.
+ * Generates rich, diverse, polyphonic musical WAV audio with studio-quality warmth.
+ * Pure musical additive synthesis with ZERO digital aliasing or radio static.
  */
 
 export interface SynthOptions {
@@ -20,7 +20,7 @@ export interface SampleTransformOptions {
 }
 
 // ----------------------------------------------------------------------
-// Seeded PRNG & String Hashing (Ensures every prompt produces distinct music)
+// Seeded PRNG & String Hashing
 // ----------------------------------------------------------------------
 
 function hashString(str: string): number {
@@ -50,7 +50,6 @@ function midiToFreq(midi: number): number {
   return 440 * Math.pow(2, (midi - 69) / 12);
 }
 
-// Note name to semitone offset from C0 (MIDI 12)
 const SEMITONES: Record<string, number> = {
   C: 0,
   "C#": 1,
@@ -71,10 +70,85 @@ const SEMITONES: Record<string, number> = {
   B: 11,
 };
 
-function noteFreq(name: string, octave: number): number {
-  const semi = SEMITONES[name] ?? 0;
-  const midi = 12 + octave * 12 + semi;
-  return midiToFreq(midi);
+// ----------------------------------------------------------------------
+// Clean Additive Oscillators (Zero Aliasing, Zero Radio Static)
+// ----------------------------------------------------------------------
+
+/**
+ * Struck-string acoustic piano tone (harmonic overtone series with hammer attack & organic decay)
+ */
+function pianoTone(f: number, t: number, noteTime: number): number {
+  if (noteTime < 0) return 0;
+  const attack = Math.min(1, noteTime / 0.006);
+  // Hammer strike initial decay + warm resonant sustain
+  const decay =
+    (0.55 * Math.exp(-noteTime * 3.5) + 0.45 * Math.exp(-noteTime * 0.75)) *
+    attack;
+
+  const tone =
+    Math.sin(2 * Math.PI * f * t) * 0.62 +
+    Math.sin(4 * Math.PI * f * t) * 0.24 +
+    Math.sin(6 * Math.PI * f * t) * 0.09 +
+    Math.sin(8 * Math.PI * f * t) * 0.04 +
+    Math.sin(10 * Math.PI * f * t) * 0.01;
+
+  return tone * decay;
+}
+
+/**
+ * Warm Rhodes Electric Piano (rich sine + 2nd harmonic + subtle stereo chorus)
+ */
+function rhodesTone(f: number, t: number, noteTime: number): number {
+  if (noteTime < 0) return 0;
+  const attack = Math.min(1, noteTime / 0.01);
+  const decay = Math.exp(-noteTime * 1.6) * attack;
+
+  const tremolo = 1 + 0.08 * Math.sin(2 * Math.PI * 4.5 * t);
+  const tone =
+    Math.sin(2 * Math.PI * f * t) * 0.7 +
+    Math.sin(4 * Math.PI * f * t) * 0.22 +
+    Math.sin(6 * Math.PI * f * t) * 0.08;
+
+  return tone * decay * tremolo;
+}
+
+/**
+ * Lush Cinematic String Pad (3 detuned voices for warm chorus width)
+ */
+function stringsTone(f: number, t: number): number {
+  return (
+    Math.sin(2 * Math.PI * f * t) * 0.5 +
+    Math.sin(2 * Math.PI * (f * 1.0025) * t) * 0.25 +
+    Math.sin(2 * Math.PI * (f * 0.9975) * t) * 0.25
+  );
+}
+
+/**
+ * Warm Synth Pad (Additive band-limited saw simulation, smooth and warm)
+ */
+function warmSynthTone(f: number, t: number): number {
+  // Band-limited 4-harmonic saw
+  return (
+    Math.sin(2 * Math.PI * f * t) * 0.5 +
+    Math.sin(4 * Math.PI * f * t) * 0.25 +
+    Math.sin(6 * Math.PI * f * t) * 0.15 +
+    Math.sin(8 * Math.PI * f * t) * 0.1
+  );
+}
+
+/**
+ * Acoustic Pluck / Guitar
+ */
+function pluckTone(f: number, t: number, noteTime: number): number {
+  if (noteTime < 0) return 0;
+  const attack = Math.min(1, noteTime / 0.004);
+  const decay = Math.exp(-noteTime * 6.5) * attack;
+  return (
+    (Math.sin(2 * Math.PI * f * t) * 0.65 +
+      Math.sin(4 * Math.PI * f * t) * 0.25 +
+      Math.sin(6 * Math.PI * f * t) * 0.1) *
+    decay
+  );
 }
 
 // ----------------------------------------------------------------------
@@ -82,6 +156,7 @@ function noteFreq(name: string, octave: number): number {
 // ----------------------------------------------------------------------
 
 export type GenreType =
+  | "calm_piano"
   | "synthwave"
   | "lofi"
   | "cinematic"
@@ -92,25 +167,37 @@ export type GenreType =
   | "jazz"
   | "trap"
   | "pop"
-  | "classical"
   | "chill";
 
 interface GenreProfile {
   bpm: number;
   scaleType: "minor" | "major" | "dorian" | "harmonic_minor" | "pentatonic";
-  drumStyle: "synth" | "lofi" | "four_on_floor" | "rock" | "trap" | "acoustic" | "none";
-  bassStyle: "arp" | "warm" | "sub" | "walking" | "drive";
-  leadTimbre: "saw" | "rhodes" | "strings" | "flute" | "pluck" | "bell";
+  drumStyle: "none" | "warm_beat" | "four_on_floor" | "rock" | "synth";
+  bassStyle: "piano" | "warm" | "sub" | "walking" | "drive";
+  leadTimbre: "piano" | "rhodes" | "strings" | "synth" | "pluck";
   defaultChords: { root: string; type: "m" | "maj" | "m7" | "maj7" | "sus4" | "dim" }[];
 }
 
 const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
+  calm_piano: {
+    bpm: 68,
+    scaleType: "major",
+    drumStyle: "none",
+    bassStyle: "piano",
+    leadTimbre: "piano",
+    defaultChords: [
+      { root: "C", type: "maj7" },
+      { root: "G", type: "maj" },
+      { root: "A", type: "m7" },
+      { root: "F", type: "maj7" },
+    ],
+  },
   synthwave: {
-    bpm: 120,
+    bpm: 118,
     scaleType: "dorian",
     drumStyle: "synth",
-    bassStyle: "arp",
-    leadTimbre: "saw",
+    bassStyle: "drive",
+    leadTimbre: "synth",
     defaultChords: [
       { root: "A", type: "m7" },
       { root: "F", type: "maj7" },
@@ -119,9 +206,9 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     ],
   },
   lofi: {
-    bpm: 80,
+    bpm: 78,
     scaleType: "minor",
-    drumStyle: "lofi",
+    drumStyle: "warm_beat",
     bassStyle: "warm",
     leadTimbre: "rhodes",
     defaultChords: [
@@ -134,7 +221,7 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
   cinematic: {
     bpm: 72,
     scaleType: "harmonic_minor",
-    drumStyle: "rock",
+    drumStyle: "none",
     bassStyle: "sub",
     leadTimbre: "strings",
     defaultChords: [
@@ -149,7 +236,7 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     scaleType: "minor",
     drumStyle: "four_on_floor",
     bassStyle: "drive",
-    leadTimbre: "saw",
+    leadTimbre: "synth",
     defaultChords: [
       { root: "F", type: "m" },
       { root: "Ab", type: "maj" },
@@ -158,7 +245,7 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     ],
   },
   rock: {
-    bpm: 132,
+    bpm: 128,
     scaleType: "minor",
     drumStyle: "rock",
     bassStyle: "drive",
@@ -171,9 +258,9 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     ],
   },
   acoustic: {
-    bpm: 96,
+    bpm: 94,
     scaleType: "major",
-    drumStyle: "acoustic",
+    drumStyle: "none",
     bassStyle: "warm",
     leadTimbre: "pluck",
     defaultChords: [
@@ -184,11 +271,11 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     ],
   },
   ambient: {
-    bpm: 58,
+    bpm: 56,
     scaleType: "pentatonic",
     drumStyle: "none",
     bassStyle: "sub",
-    leadTimbre: "bell",
+    leadTimbre: "strings",
     defaultChords: [
       { root: "C", type: "maj7" },
       { root: "F", type: "maj7" },
@@ -197,9 +284,9 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     ],
   },
   jazz: {
-    bpm: 92,
+    bpm: 90,
     scaleType: "dorian",
-    drumStyle: "lofi",
+    drumStyle: "warm_beat",
     bassStyle: "walking",
     leadTimbre: "rhodes",
     defaultChords: [
@@ -210,11 +297,11 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     ],
   },
   trap: {
-    bpm: 136,
+    bpm: 134,
     scaleType: "harmonic_minor",
-    drumStyle: "trap",
+    drumStyle: "warm_beat",
     bassStyle: "sub",
-    leadTimbre: "bell",
+    leadTimbre: "piano",
     defaultChords: [
       { root: "C", type: "m" },
       { root: "G#", type: "maj" },
@@ -223,11 +310,11 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
     ],
   },
   pop: {
-    bpm: 116,
+    bpm: 114,
     scaleType: "major",
     drumStyle: "four_on_floor",
     bassStyle: "drive",
-    leadTimbre: "pluck",
+    leadTimbre: "piano",
     defaultChords: [
       { root: "C", type: "maj" },
       { root: "G", type: "maj" },
@@ -235,25 +322,12 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
       { root: "F", type: "maj" },
     ],
   },
-  classical: {
-    bpm: 78,
+  chill: {
+    bpm: 82,
     scaleType: "minor",
     drumStyle: "none",
     bassStyle: "warm",
-    leadTimbre: "strings",
-    defaultChords: [
-      { root: "A", type: "m" },
-      { root: "D", type: "m" },
-      { root: "E", type: "maj" },
-      { root: "A", type: "m" },
-    ],
-  },
-  chill: {
-    bpm: 86,
-    scaleType: "minor",
-    drumStyle: "lofi",
-    bassStyle: "warm",
-    leadTimbre: "rhodes",
+    leadTimbre: "piano",
     defaultChords: [
       { root: "E", type: "m7" },
       { root: "B", type: "m7" },
@@ -266,42 +340,110 @@ const GENRE_PROFILES: Record<GenreType, GenreProfile> = {
 function detectGenre(prompt: string, seed: number): GenreType {
   const p = prompt.toLowerCase();
 
-  if (p.includes("synth") || p.includes("retro") || p.includes("cyberpunk") || p.includes("80s") || p.includes("neon")) {
-    return "synthwave";
-  }
-  if (p.includes("lofi") || p.includes("lo-fi") || p.includes("chillhop") || p.includes("study") || p.includes("sleepy")) {
-    return "lofi";
-  }
-  if (p.includes("cinematic") || p.includes("epic") || p.includes("orchestra") || p.includes("film") || p.includes("dramatic") || p.includes("trailer")) {
-    return "cinematic";
-  }
-  if (p.includes("techno") || p.includes("house") || p.includes("dance") || p.includes("edm") || p.includes("club") || p.includes("rave")) {
-    return "edm";
-  }
-  if (p.includes("rock") || p.includes("metal") || p.includes("electric guitar") || p.includes("punk")) {
-    return "rock";
-  }
-  if (p.includes("acoustic") || p.includes("folk") || p.includes("guitar") || p.includes("indie") || p.includes("campfire")) {
-    return "acoustic";
-  }
-  if (p.includes("ambient") || p.includes("meditation") || p.includes("relax") || p.includes("space") || p.includes("drone")) {
-    return "ambient";
-  }
-  if (p.includes("jazz") || p.includes("blues") || p.includes("funk") || p.includes("groove") || p.includes("soul")) {
-    return "jazz";
-  }
-  if (p.includes("trap") || p.includes("phonk") || p.includes("808") || p.includes("drill") || p.includes("hip hop")) {
-    return "trap";
-  }
-  if (p.includes("pop") || p.includes("happy") || p.includes("cheerful") || p.includes("summer") || p.includes("upbeat")) {
-    return "pop";
-  }
-  if (p.includes("piano") || p.includes("classical") || p.includes("violin") || p.includes("baroque")) {
-    return "classical";
+  // Explicit check for calm / piano / peace / soft / emotional
+  if (
+    p.includes("piano") ||
+    p.includes("calm") ||
+    p.includes("peace") ||
+    p.includes("relax") ||
+    p.includes("meditat") ||
+    p.includes("gentle") ||
+    p.includes("sleep") ||
+    p.includes("soft") ||
+    p.includes("soothing")
+  ) {
+    return "calm_piano";
   }
 
-  // If general prompt, dynamically assign genre based on prompt hash so different words give different genres!
+  if (
+    p.includes("synth") ||
+    p.includes("retro") ||
+    p.includes("cyberpunk") ||
+    p.includes("80s") ||
+    p.includes("neon")
+  ) {
+    return "synthwave";
+  }
+  if (
+    p.includes("lofi") ||
+    p.includes("lo-fi") ||
+    p.includes("chillhop") ||
+    p.includes("study")
+  ) {
+    return "lofi";
+  }
+  if (
+    p.includes("cinematic") ||
+    p.includes("epic") ||
+    p.includes("orchestra") ||
+    p.includes("film") ||
+    p.includes("dramatic") ||
+    p.includes("trailer")
+  ) {
+    return "cinematic";
+  }
+  if (
+    p.includes("techno") ||
+    p.includes("house") ||
+    p.includes("dance") ||
+    p.includes("edm") ||
+    p.includes("club")
+  ) {
+    return "edm";
+  }
+  if (
+    p.includes("rock") ||
+    p.includes("metal") ||
+    p.includes("electric guitar") ||
+    p.includes("punk")
+  ) {
+    return "rock";
+  }
+  if (
+    p.includes("acoustic") ||
+    p.includes("folk") ||
+    p.includes("guitar") ||
+    p.includes("indie")
+  ) {
+    return "acoustic";
+  }
+  if (
+    p.includes("ambient") ||
+    p.includes("space") ||
+    p.includes("drone") ||
+    p.includes("atmosphere")
+  ) {
+    return "ambient";
+  }
+  if (
+    p.includes("jazz") ||
+    p.includes("blues") ||
+    p.includes("funk") ||
+    p.includes("groove") ||
+    p.includes("soul")
+  ) {
+    return "jazz";
+  }
+  if (
+    p.includes("trap") ||
+    p.includes("phonk") ||
+    p.includes("808") ||
+    p.includes("drill")
+  ) {
+    return "trap";
+  }
+  if (
+    p.includes("pop") ||
+    p.includes("happy") ||
+    p.includes("cheerful") ||
+    p.includes("summer") ||
+    p.includes("upbeat")
+  ) {
+    return "pop";
+  }
+
   const allGenres: GenreType[] = [
+    "calm_piano",
     "synthwave",
     "lofi",
     "cinematic",
@@ -310,7 +452,6 @@ function detectGenre(prompt: string, seed: number): GenreType {
     "acoustic",
     "ambient",
     "jazz",
-    "trap",
     "pop",
     "chill",
   ];
@@ -318,7 +459,7 @@ function detectGenre(prompt: string, seed: number): GenreType {
 }
 
 // ----------------------------------------------------------------------
-// Chord Voicing & Scale Frequencies
+// Chord Voicing
 // ----------------------------------------------------------------------
 
 interface VoicedChord {
@@ -357,7 +498,7 @@ function buildChord(
   }
 
   const notes = intervals.map((int) => midiToFreq(rootMidi + int));
-  const bass = midiToFreq(rootMidi - 12); // one octave down for bass
+  const bass = midiToFreq(rootMidi - 12);
 
   return { bass, notes };
 }
@@ -407,25 +548,23 @@ export function generateProceduralMusic(options: SynthOptions): Buffer {
   const creativity = Math.max(0, Math.min(1, options.creativity ?? 0.5));
   const complexity = Math.max(0, Math.min(1, options.complexity ?? 0.3));
 
-  // Create deterministic yet creativity-influenced PRNG
   const promptSeed = hashString(options.prompt.trim() || "orphia music track");
-  // Blend seed with creativity integer shift so sliding creativity changes the output!
-  const combinedSeed = (promptSeed ^ (Math.floor(creativity * 1000) << 4)) >>> 0;
+  const combinedSeed =
+    (promptSeed ^ (Math.floor(creativity * 1000) << 4)) >>> 0;
   const rng = createPrng(combinedSeed);
 
   const genre = detectGenre(options.prompt, promptSeed);
   const profile = GENRE_PROFILES[genre];
 
-  // Dynamic tempo variance (+/- 8% based on seed & creativity)
-  const bpmShift = (rng() - 0.5) * 16 * (creativity + 0.2);
-  const finalBpm = Math.max(55, Math.min(160, Math.round(profile.bpm + bpmShift)));
+  const bpmShift = (rng() - 0.5) * 12 * (creativity + 0.1);
+  const finalBpm = Math.max(
+    52,
+    Math.min(150, Math.round(profile.bpm + bpmShift))
+  );
   const secondsPerBeat = 60 / finalBpm;
-  const chordDurationSec = secondsPerBeat * 4; // 4 beats per measure
+  const chordDurationSec = secondsPerBeat * 4;
 
-  // Dynamic key transposition (-5 to +6 semitones)
   const keyTransposition = Math.floor(rng() * 12) - 5;
-
-  // Build voiced chords
   const chords: VoicedChord[] = profile.defaultChords.map((c) =>
     buildChord(c.root, c.type, 3, keyTransposition)
   );
@@ -433,7 +572,7 @@ export function generateProceduralMusic(options: SynthOptions): Buffer {
   const leftChannel = new Float32Array(totalSamples);
   const rightChannel = new Float32Array(totalSamples);
 
-  // Pre-generate melodic motif steps (8 distinct notes within the active chords)
+  // Pre-generate melodic motif steps
   const melodySteps = [
     Math.floor(rng() * 4),
     Math.floor(rng() * 4),
@@ -444,6 +583,9 @@ export function generateProceduralMusic(options: SynthOptions): Buffer {
     Math.floor(rng() * 4),
     Math.floor(rng() * 4),
   ];
+
+  // Low-pass state for gentle filtered percussions
+  let snareFilterState = 0;
 
   for (let i = 0; i < totalSamples; i++) {
     const t = i / sampleRate;
@@ -458,86 +600,74 @@ export function generateProceduralMusic(options: SynthOptions): Buffer {
     let sampleR = 0;
 
     // -------------------------------------------------------------
-    // 1. Harmonies & Chords (Polyphonic Pads / EP / Plucks)
+    // 1. Chords & Harmony (Clean Harmonic Tones)
     // -------------------------------------------------------------
-    const chordAttack = genre === "ambient" || genre === "cinematic" ? 0.4 : 0.08;
-    const chordEnv =
-      Math.sin(
-        Math.min(1, Math.max(0, chordTime / (chordDurationSec * chordAttack))) *
-          (Math.PI / 2)
-      ) *
-      Math.max(0, 1 - chordTime / (chordDurationSec * 1.05)) *
-      0.32;
+    const chordAttack = genre === "calm_piano" ? 0.008 : 0.05;
+    const chordDecay =
+      genre === "calm_piano"
+        ? Math.exp(-chordTime * 0.7)
+        : Math.sin(
+            Math.min(1, chordTime / (chordDurationSec * 0.3)) * (Math.PI / 2)
+          ) * Math.max(0, 1 - chordTime / (chordDurationSec * 1.05));
 
     for (let c = 0; c < currentChord.notes.length; c++) {
       const f = currentChord.notes[c];
-      const pan = (c % 2 === 0 ? 0.6 : -0.6) * 0.25;
+      const pan = (c % 2 === 0 ? 0.5 : -0.5) * 0.2;
 
       let osc = 0;
-      if (profile.leadTimbre === "rhodes") {
-        // Mellow warm sine + gentle bell harmonic
-        osc =
-          Math.sin(2 * Math.PI * f * t) * 0.7 +
-          Math.sin(4 * Math.PI * f * t) * 0.2 +
-          Math.sin(6 * Math.PI * f * t) * 0.1;
-      } else if (profile.leadTimbre === "saw") {
-        // Detuned dual saws for lush synthwave/EDM pad
-        const saw1 = 2 * ((f * t) % 1) - 1;
-        const saw2 = 2 * (((f * 1.003) * t) % 1) - 1;
-        osc = (saw1 + saw2) * 0.35;
+      if (profile.leadTimbre === "piano") {
+        osc = pianoTone(f, t, chordTime);
+      } else if (profile.leadTimbre === "rhodes") {
+        osc = rhodesTone(f, t, chordTime);
+      } else if (profile.leadTimbre === "strings") {
+        osc = stringsTone(f, t) * chordDecay * 0.35;
+      } else if (profile.leadTimbre === "synth") {
+        osc = warmSynthTone(f, t) * chordDecay * 0.35;
       } else {
-        // Lush strings / acoustic triangle/sine
-        osc =
-          Math.sin(2 * Math.PI * f * t) * 0.6 +
-          Math.sin(2 * Math.PI * (f * 1.002) * t) * 0.25 +
-          Math.sin(4 * Math.PI * f * t) * 0.15;
+        osc = pluckTone(f, t, chordTime);
       }
 
-      sampleL += osc * chordEnv * (0.5 + pan);
-      sampleR += osc * chordEnv * (0.5 - pan);
+      sampleL += osc * (0.5 + pan);
+      sampleR += osc * (0.5 - pan);
     }
 
     // -------------------------------------------------------------
-    // 2. Bassline Engine
+    // 2. Bassline Engine (Clean Sine / Piano Bass)
     // -------------------------------------------------------------
     const bassFreq = currentChord.bass;
     let bassOsc = 0;
-    let bassEnv = 0;
 
-    if (profile.bassStyle === "arp") {
-      // 8th-note driving synthwave bass
-      const bassSub = secondsPerBeat / 2;
-      const bTime = chordTime % bassSub;
-      bassEnv = Math.exp(-bTime * 9) * 0.32;
-      bassOsc =
-        Math.sin(2 * Math.PI * bassFreq * t) * 0.7 +
-        Math.sin(4 * Math.PI * bassFreq * t) * 0.3;
+    if (profile.bassStyle === "piano") {
+      // Warm acoustic piano left-hand bass
+      bassOsc = pianoTone(bassFreq, t, chordTime % (secondsPerBeat * 2)) * 0.65;
     } else if (profile.bassStyle === "drive") {
       // Pumping sidechain bass
       const bTime = beatTime;
-      bassEnv = Math.min(1, bTime * 4) * Math.exp(-bTime * 2.5) * 0.35;
-      const saw = 2 * ((bassFreq * t) % 1) - 1;
-      bassOsc = saw * 0.4 + Math.sin(2 * Math.PI * bassFreq * t) * 0.6;
-    } else if (profile.bassStyle === "sub") {
-      // Deep sustained 808/cinematic sub-bass
-      bassEnv = Math.exp(-chordTime * 0.6) * 0.42;
-      bassOsc = Math.sin(2 * Math.PI * bassFreq * t);
-    } else {
-      // Warm jazz/lofi walking/pulse bass
-      const bTime = beatTime;
-      bassEnv = Math.exp(-bTime * 3.5) * 0.35;
+      const bEnv = Math.min(1, bTime * 6) * Math.exp(-bTime * 2.8) * 0.38;
       bassOsc =
-        Math.sin(2 * Math.PI * bassFreq * t) * 0.8 +
-        Math.sin(4 * Math.PI * bassFreq * t) * 0.2;
+        (Math.sin(2 * Math.PI * bassFreq * t) * 0.7 +
+          Math.sin(4 * Math.PI * bassFreq * t) * 0.3) *
+        bEnv;
+    } else if (profile.bassStyle === "sub") {
+      // Deep 808 sine sub-bass
+      const bEnv = Math.exp(-chordTime * 0.55) * 0.45;
+      bassOsc = Math.sin(2 * Math.PI * bassFreq * t) * bEnv;
+    } else {
+      // Warm jazz/lofi walking bass
+      const bTime = beatTime;
+      const bEnv = Math.exp(-bTime * 3.0) * 0.4;
+      bassOsc =
+        (Math.sin(2 * Math.PI * bassFreq * t) * 0.8 +
+          Math.sin(4 * Math.PI * bassFreq * t) * 0.2) *
+        bEnv;
     }
 
-    sampleL += bassOsc * bassEnv;
-    sampleR += bassOsc * bassEnv;
+    sampleL += bassOsc;
+    sampleR += bassOsc;
 
     // -------------------------------------------------------------
     // 3. Dynamic Lead Melody & Arpeggio
     // -------------------------------------------------------------
-    // Subdivision speed based on complexity (4th, 8th, or 16th notes)
     const arpSub =
       complexity > 0.6
         ? secondsPerBeat / 4
@@ -550,101 +680,81 @@ export function generateProceduralMusic(options: SynthOptions): Buffer {
     const noteIdx = melodySteps[arpIndex] % currentChord.notes.length;
     const melodyFreq = currentChord.notes[noteIdx] * 2; // an octave higher
 
-    const melEnv = Math.exp(-arpTime * (profile.leadTimbre === "saw" ? 8 : 12)) * (0.18 + complexity * 0.12);
     let melOsc = 0;
-
-    if (profile.leadTimbre === "bell") {
+    if (profile.leadTimbre === "piano") {
+      melOsc = pianoTone(melodyFreq, t, arpTime) * 0.7;
+    } else if (profile.leadTimbre === "rhodes") {
+      melOsc = rhodesTone(melodyFreq, t, arpTime) * 0.6;
+    } else if (profile.leadTimbre === "synth") {
+      const env = Math.exp(-arpTime * 6) * 0.32;
       melOsc =
-        Math.sin(2 * Math.PI * melodyFreq * t) * 0.8 +
-        Math.sin(6 * Math.PI * melodyFreq * t) * 0.2;
-    } else if (profile.leadTimbre === "saw") {
-      const saw = 2 * ((melodyFreq * t) % 1) - 1;
-      melOsc = saw * 0.45;
+        (Math.sin(2 * Math.PI * melodyFreq * t) * 0.7 +
+          Math.sin(4 * Math.PI * melodyFreq * t) * 0.3) *
+        env;
     } else {
-      melOsc =
-        Math.sin(2 * Math.PI * melodyFreq * t) * 0.7 +
-        Math.sin(4 * Math.PI * melodyFreq * t) * 0.25;
+      melOsc = pluckTone(melodyFreq, t, arpTime) * 0.6;
     }
 
-    const arpPan = Math.sin(t * 2) * 0.3;
-    sampleL += melOsc * melEnv * (0.5 + arpPan);
-    sampleR += melOsc * melEnv * (0.5 - arpPan);
+    const arpPan = Math.sin(t * 1.5) * 0.25;
+    sampleL += melOsc * (0.5 + arpPan);
+    sampleR += melOsc * (0.5 - arpPan);
 
     // -------------------------------------------------------------
-    // 4. Procedural Drum Kit (Kick, Snare, Hats)
+    // 4. Studio Percussion (Pure Sines & Warm Low-Pass Filters)
     // -------------------------------------------------------------
     if (profile.drumStyle !== "none") {
-      // A. Kick Drum
+      // A. Kick Drum (Exponential pitch sweep sine, zero noise)
       let kickHit = false;
       if (profile.drumStyle === "four_on_floor") {
-        kickHit = true; // Every beat
+        kickHit = true;
       } else if (profile.drumStyle === "synth" || profile.drumStyle === "rock") {
-        kickHit = beatIndex === 0 || beatIndex === 2; // Beats 1 & 3
-      } else if (profile.drumStyle === "trap" || profile.drumStyle === "lofi") {
+        kickHit = beatIndex === 0 || beatIndex === 2;
+      } else if (profile.drumStyle === "warm_beat") {
         kickHit = beatIndex === 0 || (beatIndex === 2 && chordIndex % 2 === 1);
       }
 
       if (kickHit) {
         const kTime = beatTime;
-        if (kTime < 0.25) {
-          // Swept sine wave: 150Hz down to 42Hz
-          const kFreq = 42 + 108 * Math.exp(-kTime * 35);
-          const kEnv = Math.exp(-kTime * 14) * 0.55;
-          const kOsc = Math.sin(2 * Math.PI * kFreq * kTime);
-          sampleL += kOsc * kEnv;
-          sampleR += kOsc * kEnv;
+        if (kTime < 0.22) {
+          const kFreq = 42 + 95 * Math.exp(-kTime * 38);
+          const kEnv = Math.exp(-kTime * 15) * 0.55;
+          const kOsc = Math.sin(2 * Math.PI * kFreq * kTime) * kEnv;
+          sampleL += kOsc;
+          sampleR += kOsc;
         }
       }
 
-      // B. Snare / Clap
+      // B. Snare / Rim (Resonant dual-tone + heavily filtered warm rattle)
       let snareHit = false;
-      if (profile.drumStyle === "four_on_floor" || profile.drumStyle === "synth" || profile.drumStyle === "rock" || profile.drumStyle === "lofi") {
-        snareHit = beatIndex === 1 || beatIndex === 3; // Beats 2 & 4
-      } else if (profile.drumStyle === "trap") {
-        snareHit = beatIndex === 2; // Beat 3
+      if (
+        profile.drumStyle === "four_on_floor" ||
+        profile.drumStyle === "synth" ||
+        profile.drumStyle === "rock" ||
+        profile.drumStyle === "warm_beat"
+      ) {
+        snareHit = beatIndex === 1 || beatIndex === 3;
       }
 
       if (snareHit) {
         const sTime = beatTime;
-        if (sTime < 0.2) {
-          const sEnv = Math.exp(-sTime * 18) * 0.38;
-          // Filtered noise + 180Hz body
-          const whiteNoise = (Math.random() - 0.5) * 2;
-          const sBody = Math.sin(2 * Math.PI * 185 * sTime) * 0.5;
-          const sOsc = (whiteNoise * 0.7 + sBody * 0.3);
-          sampleL += sOsc * sEnv;
-          sampleR += sOsc * sEnv;
+        if (sTime < 0.18) {
+          const sEnv = Math.exp(-sTime * 22) * 0.35;
+          // 2 tuned body resonators (180Hz + 330Hz)
+          const body =
+            Math.sin(2 * Math.PI * 180 * sTime) * 0.6 +
+            Math.sin(2 * Math.PI * 330 * sTime) * 0.4;
+          sampleL += body * sEnv;
+          sampleR += body * sEnv;
         }
       }
-
-      // C. Hi-Hats / Shaker
-      const hatSub = secondsPerBeat / 2; // 8th note hats
-      const hTime = t % hatSub;
-      if (hTime < 0.08) {
-        const hEnv = Math.exp(-hTime * 50) * (0.12 + complexity * 0.08);
-        const hNoise = (Math.random() - 0.5) * 2;
-        sampleL += hNoise * hEnv * 0.7;
-        sampleR += hNoise * hEnv * 0.9;
-      }
     }
 
     // -------------------------------------------------------------
-    // 5. Ambient Texture / Vinyl Dust
-    // -------------------------------------------------------------
-    if (genre === "lofi" || genre === "chill") {
-      if (Math.random() < 0.003) {
-        const crackle = (Math.random() - 0.5) * 0.04;
-        sampleL += crackle;
-        sampleR += crackle;
-      }
-    }
-
-    // -------------------------------------------------------------
-    // 6. Master Fade In / Fade Out
+    // 5. Master Fade In / Fade Out
     // -------------------------------------------------------------
     let masterFade = 1.0;
-    if (t < 1.0) {
-      masterFade = t / 1.0;
+    if (t < 0.8) {
+      masterFade = t / 0.8;
     } else if (t > duration - 1.5) {
       masterFade = (duration - t) / 1.5;
     }
@@ -659,8 +769,8 @@ export function generateProceduralMusic(options: SynthOptions): Buffer {
     const l = Math.tanh(leftChannel[i]);
     const r = Math.tanh(rightChannel[i]);
 
-    const intL = Math.max(-32768, Math.min(32767, Math.floor(l * 32000)));
-    const intR = Math.max(-32768, Math.min(32767, Math.floor(r * 32000)));
+    const intL = Math.max(-32768, Math.min(32767, Math.floor(l * 30000)));
+    const intR = Math.max(-32768, Math.min(32767, Math.floor(r * 30000)));
 
     pcmBuffer.writeInt16LE(intL, i * 4);
     pcmBuffer.writeInt16LE(intR, i * 4 + 2);
@@ -681,21 +791,22 @@ export function transformSampleMusic(options: SampleTransformOptions): Buffer {
   const targetDuration = Math.min(Math.max(5, rawDuration), 60);
   const totalSamples = Math.floor(sampleRate * targetDuration);
 
-  const sampleInfluence = Math.max(0, Math.min(100, options.sampleInfluence ?? 70)) / 100;
-  const transformationStyle = Math.max(0, Math.min(100, options.transformationStyle ?? 50)) / 100;
+  const sampleInfluence =
+    Math.max(0, Math.min(100, options.sampleInfluence ?? 70)) / 100;
+  const transformationStyle =
+    Math.max(0, Math.min(100, options.transformationStyle ?? 50)) / 100;
 
   // 1. Generate complementary musical accompaniment based on user's prompt
   const accompaniment = generateProceduralMusic({
     prompt: options.prompt || "harmonic musical backing extension",
     duration: targetDuration,
     creativity: transformationStyle,
-    complexity: 0.4 + transformationStyle * 0.4,
+    complexity: 0.3 + transformationStyle * 0.4,
   });
 
-  // Skip accompaniment WAV header (44 bytes) to access raw accompaniment PCM
   const accompPcm = accompaniment.subarray(44);
 
-  // 2. Decode uploaded sample PCM if WAV format, or extract audio envelope
+  // 2. Decode uploaded sample PCM if WAV format
   let uploadedSamplesL: Float32Array | null = null;
   let uploadedSamplesR: Float32Array | null = null;
 
@@ -706,7 +817,6 @@ export function transformSampleMusic(options: SampleTransformOptions): Buffer {
       buf.slice(0, 4).toString("ascii") === "RIFF" &&
       buf.slice(8, 12).toString("ascii") === "WAVE"
     ) {
-      // Parse WAV subchunks
       let dataOffset = 44;
       let dataSize = buf.length - 44;
       let channels = 2;
@@ -729,12 +839,13 @@ export function transformSampleMusic(options: SampleTransformOptions): Buffer {
         pos += 8 + chunkSize;
       }
 
-      const numSamples = Math.floor(dataSize / (channels * (bitsPerSample / 8)));
-      uploadedSamplesL = new Float32Array(numSamples);
-      uploadedSamplesR = new Float32Array(numSamples);
+      const bytesPerSample = bitsPerSample / 8;
+      const numInputSamples = Math.floor(dataSize / (channels * bytesPerSample));
+      uploadedSamplesL = new Float32Array(numInputSamples);
+      uploadedSamplesR = new Float32Array(numInputSamples);
 
-      for (let s = 0; s < numSamples; s++) {
-        const byteIndex = dataOffset + s * channels * (bitsPerSample / 8);
+      for (let s = 0; s < numInputSamples; s++) {
+        const byteIndex = dataOffset + s * channels * bytesPerSample;
         if (byteIndex + 2 <= buf.length) {
           const valL = buf.readInt16LE(byteIndex) / 32768;
           const valR =
@@ -747,16 +858,17 @@ export function transformSampleMusic(options: SampleTransformOptions): Buffer {
       }
     }
   } catch (parseErr) {
-    console.warn("Uploaded sample is not uncompressed WAV, applying adaptive spectral layer:", parseErr);
+    console.warn("Uploaded sample is not uncompressed WAV:", parseErr);
   }
 
   // 3. Composite & Mix original sample with generated accompaniment
+  // NOTICE: If uploaded sample is null/empty, we DO NOT inject random bytes!
+  // Instead, the accompaniment plays purely and cleanly with zero static!
   const mixedPcm = Buffer.alloc(totalSamples * numChannels * 2);
-  const sampleMixVol = sampleInfluence * 1.3;
-  const accompMixVol = 0.35 + transformationStyle * 0.65;
+  const sampleMixVol = sampleInfluence * 1.0;
+  const accompMixVol = 0.4 + transformationStyle * 0.6;
 
   for (let i = 0; i < totalSamples; i++) {
-    // Read accompaniment sample
     let accL = 0;
     let accR = 0;
     const accByteIdx = i * 4;
@@ -765,26 +877,20 @@ export function transformSampleMusic(options: SampleTransformOptions): Buffer {
       accR = accompPcm.readInt16LE(accByteIdx + 2) / 32768;
     }
 
-    // Read uploaded sample (looping if sample is shorter than target duration)
     let uplL = 0;
     let uplR = 0;
     if (uploadedSamplesL && uploadedSamplesL.length > 0) {
       const sampleIdx = i % uploadedSamplesL.length;
       uplL = uploadedSamplesL[sampleIdx];
       uplR = uploadedSamplesR![sampleIdx];
-    } else {
-      // If sample couldn't be parsed directly (e.g. encoded mp3 bytes), extract dynamic texture
-      const byteVal = (options.sampleBuffer[i % options.sampleBuffer.length] - 128) / 128;
-      uplL = byteVal * 0.4;
-      uplR = byteVal * 0.4;
     }
 
-    // Combine with soft clipping
+    // Mix cleanly without noise injection
     const finalL = Math.tanh(uplL * sampleMixVol + accL * accompMixVol);
     const finalR = Math.tanh(uplR * sampleMixVol + accR * accompMixVol);
 
-    const intL = Math.max(-32768, Math.min(32767, Math.floor(finalL * 32000)));
-    const intR = Math.max(-32768, Math.min(32767, Math.floor(finalR * 32000)));
+    const intL = Math.max(-32768, Math.min(32767, Math.floor(finalL * 30000)));
+    const intR = Math.max(-32768, Math.min(32767, Math.floor(finalR * 30000)));
 
     mixedPcm.writeInt16LE(intL, i * 4);
     mixedPcm.writeInt16LE(intR, i * 4 + 2);

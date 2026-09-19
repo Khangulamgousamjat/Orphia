@@ -39,6 +39,7 @@ import { useConvexAuth } from "convex/react";
 import { Spinner } from "@/components/spinner";
 import { redirect } from "next/navigation";
 import { toast } from "sonner";
+import { audioBufferToWav } from "@/lib/wav-utils";
 
 export default function MusicGenPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
@@ -216,8 +217,41 @@ export default function MusicGenPage() {
     setError("");
 
     try {
+      let uploadFile: Blob | File = fileObj;
+
+      // Decode audio in browser to produce clean, uncorrupted PCM WAV for any audio format
+      try {
+        if (typeof window !== "undefined") {
+          const AudioContextClass =
+            window.AudioContext ||
+            (window as unknown as { webkitAudioContext: typeof AudioContext })
+              .webkitAudioContext;
+          if (AudioContextClass) {
+            const audioCtx = new AudioContextClass();
+            const arrayBuffer = await fileObj.arrayBuffer();
+            const decoded = await audioCtx.decodeAudioData(
+              arrayBuffer.slice(0)
+            );
+            const wavBlob = audioBufferToWav(decoded);
+            if (wavBlob && wavBlob.size > 44) {
+              uploadFile = wavBlob;
+            }
+            await audioCtx.close();
+          }
+        }
+      } catch (decodeErr) {
+        console.warn(
+          "Browser native audio decoding skipped, using raw file:",
+          decodeErr
+        );
+      }
+
       const formData = new FormData();
-      formData.append("audio", fileObj);
+      formData.append(
+        "audio",
+        uploadFile,
+        fileObj.name.replace(/\.[^/.]+$/, ".wav")
+      );
       formData.append("prompt", prompt);
       formData.append("duration", duration.toString());
       formData.append("sampleInfluence", sampleInfluence.toString());
