@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const HF_KEY = process.env.HF_API_TOKEN || process.env.HF_TOKEN;
 const HF_ENDPOINT = process.env.HF_ENDPOINT_URL;
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE_BYTES = 4.2 * 1024 * 1024; // 4.2MB (Vercel Serverless hard limit is 4.5MB)
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,9 +32,11 @@ export async function POST(request: NextRequest) {
     if (audioFile.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json(
         {
-          error: `Audio file is too large. Maximum size allowed is ${
-            MAX_FILE_SIZE_BYTES / 1024 / 1024
-          }MB.`,
+          error: `Audio sample is too large (${(
+            audioFile.size /
+            1024 /
+            1024
+          ).toFixed(1)}MB). Maximum allowed is 4MB. Please use a shorter sample.`,
         },
         { status: 413 }
       );

@@ -232,7 +232,7 @@ export default function MusicGenPage() {
             const decoded = await audioCtx.decodeAudioData(
               arrayBuffer.slice(0)
             );
-            const wavBlob = audioBufferToWav(decoded);
+            const wavBlob = audioBufferToWav(decoded, 12);
             if (wavBlob && wavBlob.size > 44) {
               uploadFile = wavBlob;
             }
@@ -263,8 +263,23 @@ export default function MusicGenPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate music");
+        let errorMsg = "Failed to generate music";
+        const rawText = await response.text();
+        try {
+          const errorData = JSON.parse(rawText);
+          errorMsg = errorData.error || errorMsg;
+        } catch {
+          if (
+            response.status === 413 ||
+            rawText.toLowerCase().includes("request entity too large")
+          ) {
+            errorMsg =
+              "The uploaded audio exceeds cloud function limits (max 4MB). Please select a shorter sample snippet.";
+          } else {
+            errorMsg = rawText || `Server error (${response.status})`;
+          }
+        }
+        throw new Error(errorMsg);
       }
 
       const audioBlob = await response.blob();

@@ -3,11 +3,16 @@
  * Converts any browser-decoded AudioBuffer (MP3, AAC, OGG, WAV) into pristine 16-bit PCM WAV Blob
  */
 
-export function audioBufferToWav(buffer: AudioBuffer): Blob {
-  const numChannels = buffer.numberOfChannels;
+export function audioBufferToWav(
+  buffer: AudioBuffer,
+  maxDurationSeconds = 12
+): Blob {
+  const numChannels = Math.min(2, buffer.numberOfChannels);
   const sampleRate = buffer.sampleRate;
   const bitDepth = 16;
-  const numSamples = buffer.length;
+  // Cap samples to maxDurationSeconds (e.g. 12s = ~2MB) to prevent Vercel 4.5MB 413 Payload Too Large error
+  const maxSamples = Math.floor(sampleRate * maxDurationSeconds);
+  const numSamples = Math.min(buffer.length, maxSamples);
   const bytesPerSample = bitDepth / 8;
   const blockAlign = numChannels * bytesPerSample;
   const dataSize = numSamples * blockAlign;
