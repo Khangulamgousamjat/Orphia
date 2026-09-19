@@ -276,13 +276,22 @@ export default function MusicGenPage() {
     }
 
     try {
+      const cleanPrompt = (prompt || fileName || "sample")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 24)
+        .replace(/^-|-$/g, "");
+      const suffix = Date.now().toString().slice(-4);
+      const outputName = `orphia-${cleanPrompt || "sample"}-${suffix}.wav`;
+
       const a = document.createElement("a");
       a.href = generatedAudioUrl;
-      a.download = `orphia-${new Date().toISOString().slice(0, 10)}.wav`;
+      a.download = outputName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      toast.success("Downloading audio...");
+      toast.success(`Downloading ${outputName}...`);
     } catch (error) {
       console.error("download error: ", error);
       toast.error("An error occurred while downloading audio");

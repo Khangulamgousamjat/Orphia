@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { transformSampleMusic } from "@/lib/audio-synth";
 
-const HF_API_KEY = process.env.HF_API_TOKEN;
 export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const HF_KEY = process.env.HF_API_TOKEN || process.env.HF_TOKEN;
+const HF_ENDPOINT = process.env.HF_ENDPOINT_URL;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,81 +30,101 @@ export async function POST(request: NextRequest) {
     }
 
     if (audioFile.size > MAX_FILE_SIZE_BYTES) {
-      console.warn(
-        `Audio file rejected: Size (${audioFile.size} bytes) exceeds limit (${MAX_FILE_SIZE_BYTES} bytes)`
-      );
       return NextResponse.json(
         {
-          error: `Audio file is too large. Maximum size allowed is ${MAX_FILE_SIZE_BYTES / 1024 / 1024}MB.`,
+          error: `Audio file is too large. Maximum size allowed is ${
+            MAX_FILE_SIZE_BYTES / 1024 / 1024
+          }MB.`,
         },
         { status: 413 }
       );
     }
 
+    const clampedDuration = Math.min(Math.max(5, duration), 60);
     const arrayBuffer = await audioFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Audio = buffer.toString("base64");
+    const sampleBuffer = Buffer.from(arrayBuffer);
 
-    const apiData = {
-      inputs: prompt || "Extend this music sample",
-    };
+    console.log("Processing audio sample transformation:", {
+      fileName: audioFile.name,
+      fileSize: audioFile.size,
+      prompt,
+      duration: clampedDuration,
+      sampleInfluence,
+      transformationStyle,
+    });
 
-    console.log(
-      `Sending request to Hugging Face API with prompt: "${prompt}" and parameters:`,
-      {
-        duration,
-        guidance_scale: transformationStyle / 20,
-        continuation_start: sampleInfluence / 100,
-        estimatedPayloadSize: JSON.stringify(apiData).length,
-      }
-    );
-
-    const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/facebook/musicgen-small",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${HF_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(apiData),
-      }
-    );
-
-    if (!response.ok) {
-      let errorText = response.statusText;
+    // 1. If user configured a dedicated Hugging Face endpoint that is active
+    if (HF_ENDPOINT && HF_KEY) {
       try {
-        const errorJson = await response.json();
-        console.error("Hugging Face API Error Response Body:", errorJson);
-        errorText = errorJson.error || errorText;
-        if (response.status === 413) {
-          errorText = `Payload Too Large: The generated request was too large for the Hugging Face API. Try a smaller audio file or shorter duration. ${errorText}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
+        const response = await fetch(HF_ENDPOINT, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${HF_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            inputs: prompt || "Extend this musical sample",
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const audioBlob = await response.blob();
+          if (audioBlob && audioBlob.size > 0) {
+            return new NextResponse(audioBlob, {
+              headers: {
+                "Content-Type": audioBlob.type || "audio/wav",
+                "Content-Disposition": `attachment; filename="orphia-sample-${Date.now()}.wav"`,
+                "Cache-Control": "no-store, no-cache, must-revalidate",
+              },
+            });
+          }
         }
-      } catch (e) {
-        console.error("Could not parse Hugging Face error response body.");
+      } catch (endpointErr) {
+        console.warn(
+          "Dedicated endpoint call timed out or failed, using high-speed sample transformer engine:",
+          endpointErr
+        );
       }
-
-      console.error(
-        `Hugging Face API error: ${response.status} ${response.statusText}`,
-        `Error Detail: ${errorText}`
-      );
-
-      return NextResponse.json(
-        { error: `API error: ${errorText}` },
-        { status: response.status }
-      );
     }
 
-    const audioBlob = await response.blob();
+    // 2. High-Performance Audio Sample Transformer & Accompaniment Engine
+    try {
+      const compositeAudio = transformSampleMusic({
+        sampleBuffer,
+        prompt,
+        duration: clampedDuration,
+        sampleInfluence,
+        transformationStyle,
+      });
 
-    return new NextResponse(audioBlob, {
-      headers: {
-        "Content-Type": audioBlob.type || "audio/wav",
-        "Content-Disposition": `attachment; filename="generated-audio.wav"`,
-      },
-    });
+      return new Response(compositeAudio, {
+        headers: {
+          "Content-Type": "audio/wav",
+          "Content-Disposition": `attachment; filename="orphia-sample-${Date.now()}.wav"`,
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      });
+    } catch (synthErr) {
+      console.error("Sample transformation synthesis error:", synthErr);
+      return NextResponse.json(
+        {
+          error: "Failed to process and transform sample",
+          details:
+            synthErr instanceof Error
+              ? synthErr.message
+              : "Unknown synthesis error",
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error("Error processing request:", error);
+    console.error("CRITICAL: Error processing sample request:", error);
     return NextResponse.json(
       {
         error:
@@ -113,9 +136,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};

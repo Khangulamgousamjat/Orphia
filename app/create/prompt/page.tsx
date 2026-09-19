@@ -145,13 +145,22 @@ export default function PromptPage() {
     }
 
     try {
+      const cleanPrompt = prompt
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 24)
+        .replace(/^-|-$/g, "");
+      const suffix = Date.now().toString().slice(-4);
+      const fileName = `orphia-${cleanPrompt || "music"}-${suffix}.wav`;
+
       const a = document.createElement("a");
       a.href = audioURL;
-      a.download = `orphia-${new Date().toISOString().slice(0, 10)}.wav`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      toast.info("Downloading audio...");
+      toast.info(`Downloading ${fileName}...`);
     } catch (error) {
       console.error("download error: ", error);
       toast.error("An error occurred while downloading audio");
